@@ -1,7 +1,6 @@
-import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { AuthContext } from '../context/AuthContext';
 
 const pageStyles = {
   height: '100vh',
@@ -11,7 +10,8 @@ const pageStyles = {
   justifyContent: 'center',
   alignItems: 'center',
   padding: '2rem',
-  backgroundImage: 'url(https://images.unsplash.com/photo-1503424886304-82384b5dad7b?auto=format&fit=crop&w=1470&q=80)', // courier/delivery related image
+  backgroundImage:
+    'url(https://images.unsplash.com/photo-1503424886304-82384b5dad7b?auto=format&fit=crop&w=1470&q=80)',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
@@ -19,20 +19,23 @@ const pageStyles = {
 
 const overlayStyles = {
   position: 'absolute',
-  top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(91, 60, 15, 0.6)', // warm dark brown overlay, 60% opacity
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(91, 60, 15, 0.6)',
   zIndex: 1,
 };
 
 const styles = {
   container: {
     position: 'relative',
-    zIndex: 2, // above overlay
+    zIndex: 2,
     width: '420px',
     padding: '2.5rem 3rem',
-    backgroundColor: 'rgba(243, 236, 228, 0.95)', // light beige, slightly transparent
+    backgroundColor: 'rgba(243, 236, 228, 0.95)',
     borderRadius: '12px',
-    boxShadow: '0 6px 18px rgba(101, 67, 33, 0.35)', // soft brown shadow
+    boxShadow: '0 6px 18px rgba(101, 67, 33, 0.35)',
     color: '#5d432c',
   },
   title: {
@@ -82,6 +85,17 @@ const styles = {
   buttonHover: {
     backgroundColor: '#5d432c',
   },
+  resendButton: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#a67835',
+    border: 'none',
+    borderRadius: '8px',
+    color: '#fff8f0',
+    fontWeight: '600',
+    marginTop: '0.8rem',
+    cursor: 'pointer',
+  },
   newUser: {
     marginTop: '1.8rem',
     textAlign: 'center',
@@ -103,27 +117,28 @@ const styles = {
     fontWeight: '600',
     textAlign: 'center',
   },
+  success: {
+    color: '#2e7d32',
+    marginTop: '0.8rem',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 };
 
 export default function Register() {
-  const { login } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', email: '', password: '' });
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [inputFocus, setInputFocus] = useState({});
+  const [showOtpField, setShowOtpField] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     setError(null);
-    try {
-      const res = await api.post('/auth/register', formData);
-      login(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    }
+    setSuccess(null);
   };
 
   const handleFocus = (name) => {
@@ -134,81 +149,154 @@ export default function Register() {
     setInputFocus((prev) => ({ ...prev, [name]: false }));
   };
 
+  // 1️⃣ Handle registration and OTP send
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await api.post('/auth/register', formData);
+      setSuccess(res.data.message || 'OTP sent to your email! Please verify.');
+      setShowOtpField(true);
+      setOtpSent(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed. Please enter a valid email.');
+    }
+  };
+
+  // 2️⃣ Handle OTP verification
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/auth/verify-otp', { email: formData.email, otp });
+      setSuccess(res.data.message || 'Your email has been verified!');
+      setTimeout(() => navigate('/login'), 1500);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid or expired OTP.');
+    }
+  };
+
+  // 3️⃣ Resend OTP
+  const handleResendOtp = async () => {
+    try {
+      const res = await api.post('/auth/resend-otp', { email: formData.email });
+      setSuccess(res.data.message || 'New OTP sent successfully!');
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend OTP.');
+    }
+  };
+
   return (
     <div style={pageStyles}>
       <div style={overlayStyles} />
       <div style={styles.container}>
         <h2 style={styles.title}>Create Your Courier Account</h2>
-        <form onSubmit={handleSubmit} autoComplete="off">
-          <label htmlFor="username" style={styles.label}>Username</label>
-          <input
-            id="username"
-            name="username"
-            placeholder="Enter your username"
-            onChange={handleChange}
-            onFocus={() => handleFocus('username')}
-            onBlur={() => handleBlur('username')}
-            style={{
-              ...styles.input,
-              ...(inputFocus.username ? styles.inputFocus : {}),
-            }}
-            required
-          />
 
-          <label htmlFor="email" style={styles.label}>Email Address</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="Enter your email"
-            onChange={handleChange}
-            onFocus={() => handleFocus('email')}
-            onBlur={() => handleBlur('email')}
-            style={{
-              ...styles.input,
-              ...(inputFocus.email ? styles.inputFocus : {}),
-            }}
-            required
-          />
+        {!showOtpField ? (
+          <form onSubmit={handleSubmit} autoComplete="off">
+            <label htmlFor="username" style={styles.label}>Username</label>
+            <input
+              id="username"
+              name="username"
+              placeholder="Enter your username"
+              onChange={handleChange}
+              onFocus={() => handleFocus('username')}
+              onBlur={() => handleBlur('username')}
+              style={{
+                ...styles.input,
+                ...(inputFocus.username ? styles.inputFocus : {}),
+              }}
+              required
+            />
+            <label htmlFor="email" style={styles.label}>Email Address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              onChange={handleChange}
+              onFocus={() => handleFocus('email')}
+              onBlur={() => handleBlur('email')}
+              style={{
+                ...styles.input,
+                ...(inputFocus.email ? styles.inputFocus : {}),
+              }}
+              required
+            />
+            <label htmlFor="password" style={styles.label}>Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              onChange={handleChange}
+              onFocus={() => handleFocus('password')}
+              onBlur={() => handleBlur('password')}
+              style={{
+                ...styles.input,
+                ...(inputFocus.password ? styles.inputFocus : {}),
+              }}
+              autoComplete="new-password"
+              required
+            />
+            <button
+              type="submit"
+              style={styles.button}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = styles.buttonHover.backgroundColor)}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = styles.button.backgroundColor)}
+            >
+              Register & Get OTP
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp}>
+            <label htmlFor="otp" style={styles.label}>Enter the 4-digit OTP</label>
+            <input
+              id="otp"
+              name="otp"
+              placeholder="Enter your OTP"
+              maxLength="4"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              style={styles.input}
+              required
+            />
+            <button
+              type="submit"
+              style={styles.button}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = styles.buttonHover.backgroundColor)}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = styles.button.backgroundColor)}
+            >
+              Verify OTP & Continue
+            </button>
+            {otpSent && (
+              <button
+                type="button"
+                style={styles.resendButton}
+                onClick={handleResendOtp}
+              >
+                Resend OTP
+              </button>
+            )}
+          </form>
+        )}
 
-          <label htmlFor="password" style={styles.label}>Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder="Enter your password"
-            onChange={handleChange}
-            onFocus={() => handleFocus('password')}
-            onBlur={() => handleBlur('password')}
-            style={{
-              ...styles.input,
-              ...(inputFocus.password ? styles.inputFocus : {}),
-            }}
-            autoComplete="new-password"
-            required
-          />
-
-          <button
-            type="submit"
-            style={styles.button}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = styles.buttonHover.backgroundColor)}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = styles.button.backgroundColor)}
-          >
-            Register
-          </button>
-          {error && <p style={styles.error}>{error}</p>}
-        </form>
-        <p style={styles.newUser}>
-          Already have an account?
-          <Link
-            to="/login"
-            style={styles.link}
-            onMouseOver={(e) => (e.currentTarget.style.textDecoration = styles.linkHover.textDecoration)}
-            onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
-          >
-            Login
-          </Link>
-        </p>
+        {success && <p style={styles.success}>{success}</p>}
+        {error && <p style={styles.error}>{error}</p>}
+        {!showOtpField && (
+          <p style={styles.newUser}>
+            Already have an account?
+            <Link
+              to="/login"
+              style={styles.link}
+              onMouseOver={(e) => (e.currentTarget.style.textDecoration = styles.linkHover.textDecoration)}
+              onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              Login
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

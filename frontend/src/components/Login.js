@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 
@@ -8,7 +8,7 @@ const styles = {
     maxWidth: '380px',
     margin: '5rem auto',
     padding: '2rem 2.5rem',
-    backgroundColor: '#efe6d6', // lighter beige with yellow tint
+    backgroundColor: '#efe6d6',
     borderRadius: '14px',
     boxShadow: '0 6px 20px rgba(115, 78, 35, 0.3)',
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -86,6 +86,8 @@ const styles = {
 
 export default function Login() {
   const { login } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState(null);
   const [inputFocus, setInputFocus] = useState({});
@@ -100,6 +102,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', formData);
       login(res.data);
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     }
@@ -123,6 +126,7 @@ export default function Login() {
           name="email"
           type="email"
           placeholder="Enter your email"
+          value={formData.email}
           onChange={handleChange}
           onFocus={() => handleFocus('email')}
           onBlur={() => handleBlur('email')}
@@ -138,6 +142,7 @@ export default function Login() {
           name="password"
           type="password"
           placeholder="Enter your password"
+          value={formData.password}
           onChange={handleChange}
           onFocus={() => handleFocus('password')}
           onBlur={() => handleBlur('password')}
@@ -151,24 +156,24 @@ export default function Login() {
         <button
           type="submit"
           style={styles.button}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = styles.buttonHover.backgroundColor)}
-          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = styles.button.backgroundColor)}
+          onMouseOver={e => (e.currentTarget.style.backgroundColor = styles.buttonHover.backgroundColor)}
+          onMouseOut={e => (e.currentTarget.style.backgroundColor = styles.button.backgroundColor)}
         >
           Login
         </button>
-        {error && <p style={styles.error}>{error}</p>}
       </form>
       <p style={styles.newUser}>
         New here?
         <Link
           to="/register"
           style={styles.link}
-          onMouseOver={(e) => (e.currentTarget.style.textDecoration = styles.linkHover.textDecoration)}
-          onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+          onMouseOver={e => (e.currentTarget.style.textDecoration = styles.linkHover.textDecoration)}
+          onMouseOut={e => (e.currentTarget.style.textDecoration = 'none')}
         >
           Register
         </Link>
       </p>
+      {error && <p style={styles.error}>{error}</p>}
     </div>
   );
 }
